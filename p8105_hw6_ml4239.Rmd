@@ -27,3 +27,30 @@ homicide_tidy<-homicide_data %>%
   filter(!(city_state %in% c('Dallas,TX', 'Phoenix,AZ','Kansas City,MO',"Tulsa,AL"))) #omit cities
 ```
 
+###regression fpr the city of Baltimore, MD
+
+```{r}
+
+baltimore <-homicide_tidy %>% 
+  filter(city_state == "Baltimore,MD")
+
+fit_logistic = 
+  baltimore %>% 
+  glm(case_status ~ victim_age + victim_race + victim_sex, data = ., family = binomial())  #Save the output of glm as an R object
+
+```
+
+Obtain the estimate and confidence interval of the adjusted odds ratio for solving homicides comparing non-white victims to white victims keeping all other variables fixed.
+
+```{r}
+fit_logistic %>% 
+  broom::tidy() %>% 
+  mutate(OR = exp(estimate),
+         conf.low = exp(estimate - std.error*1.96),
+         conf.high = exp(estimate + std.error*1.96)) %>% 
+  select(term, OR, conf.low, conf.high, p.value) %>% 
+  knitr::kable()
+
+```
+
+Here we can see the estimate of the adjusted odds ratio for solving homicides comparing non-white is 0.4406080, and 95% confidence interval is (0.3129079, 0.6204234)
