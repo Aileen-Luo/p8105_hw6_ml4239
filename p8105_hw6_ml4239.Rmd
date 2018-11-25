@@ -54,3 +54,35 @@ fit_logistic %>%
 ```
 
 Here we can see the estimate of the adjusted odds ratio for solving homicides comparing non-white is 0.4406080, and 95% confidence interval is (0.3129079, 0.6204234)
+
+###dataframe with estimated ORs and CIs for each city.
+```{r}
+cities_summary<-homicide_tidy %>% 
+  group_by(city_state) %>% 
+  nest() %>% 
+  mutate(models = map(data, ~glm(case_status ~ victim_age + victim_sex + victim_race, data = .x, family = binomial())),
+         models = map(models, broom::tidy)) %>% 
+  select(-data) %>% 
+  unnest() %>% 
+  filter(term == "victim_raceNonwhite") %>% 
+  mutate(OR = exp(estimate),
+         conf.low = exp(estimate - std.error*1.96),
+         conf.high = exp(estimate + std.error*1.96)) %>% 
+  select(city_state,OR, conf.low, conf.high, p.value) 
+```
+
+###plot that shows the estimated ORs and CIs for each city.
+```{r}
+cities_summary %>% 
+  ggplot(aes(x = reorder(city_state, OR), y = OR)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
+  labs(title = "Estimated ORs and CIs for Each City",
+       x = "city", 
+       y = "ORs and CIs for nonwhite victims comparing to white victims",
+       caption = "Data from the Washington Post") + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+**Comments** The estimated ORS range from 0.1 to 1.2. `Boston, MA` has the least odd ratio and `Tampa, FL` has the most odds ratio for solving homicides comparing non-white victims to white victims keeping all other variables fixed. And we can also conclude from the plot that there tend to be more unsolved cases for nonwhite compared to white victims.(Birmingha, AL/ Tampa, FL are the only two exceptions)
+
