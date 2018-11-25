@@ -86,3 +86,23 @@ cities_summary %>%
 
 **Comments** The estimated ORS range from 0.1 to 1.2. `Boston, MA` has the least odd ratio and `Tampa, FL` has the most odds ratio for solving homicides comparing non-white victims to white victims keeping all other variables fixed. And we can also conclude from the plot that there tend to be more unsolved cases for nonwhite compared to white victims.(Birmingha, AL/ Tampa, FL are the only two exceptions)
 
+
+
+
+##P.2
+
+###Load and clean the data for regression analysis
+```{r}
+birthweight<- read_csv("./data/birthweight.csv")
+
+str(birthweight)
+birthweight %>% 
+  mutate(babysex = as.factor(recode(babysex, `1` = 0, `2` = 1)), # 0 represent male, 1 represents female
+         frace = as.factor(frace), 
+         mrace = as.factor(mrace),
+         malform = as.factor(malform))
+
+table(is.na(birthweight))
+```
+
+
