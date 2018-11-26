@@ -164,3 +164,42 @@ birth_tidy %>%
        y = "Residual",
        title = "Predicted values vs. residuals plot for Final model")
 ```
+
+
+
+
+###Compare your model to two others:
+
+One using length at birth and gestational age as predictors (main effects only)
+One using head circumference, length, sex, and all interactions (including the three-way interaction) between these
+
+Make this comparison in terms of the cross-validated prediction error
+```{r}
+cv = 
+  crossv_mc(birth_tidy, 100) %>%
+  mutate(train = map(train, as_tibble),
+         test = map(test, as_tibble)) 
+  
+cv = 
+    cv %>% 
+  mutate(model_own = map(train, ~lm(bwt ~  bhead + blength + delwt + fincome + gaweeks + mrace  + ppbmi + smoken, data = .x)),
+         model_main = map(train, ~lm(bwt ~ blength + gaweeks, data = .x)),
+         model_inter = map(train, ~lm(bwt ~ babysex + blength + bhead + babysex * blength + babysex * bhead + blength * bhead + babysex * blength * bhead, data = .x))) %>% 
+    mutate(rmse_m1 = map2_dbl(model_own, test, ~rmse(model = .x, data = .y)),
+         rmse_m2 = map2_dbl(model_main, test, ~rmse(model = .x, data = .y)),
+         rmse_m3 = map2_dbl(model_inter, test, ~rmse(model = .x, data = .y)))
+  
+  
+cv %>% 
+  select(starts_with("rmse")) %>% 
+  gather(key = model, value = rmse) %>% 
+  mutate(model = str_replace(model, "rmse_", ""),
+         model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse)) + geom_violin()
+         
+```
+
+
+
+
+
