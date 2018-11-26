@@ -10,6 +10,8 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(ggplot2)
+library(modelr)
+library(leaps)
 ```
 
 ##P.1
@@ -92,17 +94,73 @@ cities_summary %>%
 ##P.2
 
 ###Load and clean the data for regression analysis
-```{r}
+```{r, message=FALSE}
 birthweight<- read_csv("./data/birthweight.csv")
-
-str(birthweight)
-birthweight %>% 
+birth_tidy<-birthweight %>% 
   mutate(babysex = as.factor(recode(babysex, `1` = 0, `2` = 1)), # 0 represent male, 1 represents female
          frace = as.factor(frace), 
          mrace = as.factor(mrace),
-         malform = as.factor(malform))
+         malform = as.factor(malform),
+         bhead = as.numeric(bhead), 
+         bwt = as.numeric(bwt * 0.00220462),
+         mheight = as.numeric(mheight ))
 
 table(is.na(birthweight))
 ```
 
+Change babysex, frace, mrace, malform to factor variable and we can see there is no missing data.
 
+###Build up regression model
+
+Test the normal distribution assumption for the outcome
+```{r}
+birth_tidy %>% 
+  ggplot(aes(x = bwt)) + 
+  geom_bar()+
+  labs(x = "birthweight",
+       title = "Barplot of birthweight variable") 
+```
+
+We can tell that the birthweight outcome is like a Normal distribution so it follows the assumption.
+
+```{r}
+select_result <- regsubsets(bwt ~ ., data = birthweight)
+md_sum<-summary(select_result)
+md_sum
+par(mar=c(4,4,1,1))
+par(mfrow=c(1,2))
+plot(2:10, md_sum$cp, xlab="No of parameters", ylab="Cp Statistic")
+abline(0,1)
+plot(2:10, md_sum$adjr2, xlab="No of parameters", ylab="Adj R2")
+```
+
+From the plot of CP statistics and Adjr2, we can tell there is no such different after 8 parameters, which are bhead, blength, delwt, fincome ,gaweeks, mrace, ppbmi, smoken.
+  
+Next we build the model and check its assumption.
+  
+  
+```{r}
+multi.fit8<-lm(bwt ~ bhead+ blength + delwt + fincome + gaweeks + mrace  + ppbmi + smoken, data = birth_tidy)
+par(mfrow=c(2,2))
+plot(multi.fit8) #check assumption
+```
+It fits the assumption quite nice. The residuals lies between 0 and QQ plot shows nice linear relationship which indicates it follows the normal distribution. 
+###Factor driven regression model
+
+For factor regression we choose the variable "babysex " and "mrace". 
+
+Propose a regression model for birthweight. This model may be based on a hypothesized structure for the factors that underly birthweight, on a data-driven model-building process, or a combination of the two. 
+
+###show a plot of model residuals against fitted values 
+
+```{r}
+birth_tidy %>% 
+  add_predictions(multi.fit8) %>% 
+  add_residuals(multi.fit8) %>% 
+  ggplot(aes(x = pred, y = resid)) + 
+  geom_point() + 
+  geom_smooth(se = FALSE) + 
+  labs(x = "Predicted value", 
+       y = "Residual",
+       title = "Predicted values vs. residuals plot for Final model")
+```
