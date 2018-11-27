@@ -20,14 +20,18 @@ library(leaps)
 ```{r message=F}
 homicide_data <- read_csv('./data/homicide-data.csv') 
 
-homicide_tidy<-homicide_data %>%  
+
+homicide_tidy<-homicide_data %>% 
   mutate(city_state = str_c(city, ",", state),
-         case_status = ifelse(disposition == "Closed without arrest" | disposition == "Open/No arrest", 0, 1), 
-         victim_race = ifelse(victim_race == "White", "White", "Nonwhite"), 
-         victim_race = factor(victim_race, levels = c("White", "Nonwhite")), #factor
-         victim_age = as.numeric(victim_age))%>% 
-  filter(!(city_state %in% c('Dallas,TX', 'Phoenix,AZ','Kansas City,MO',"Tulsa,AL"))) #omit cities
+         case_status = ifelse(disposition == "Closed without arrest" | disposition == "Open/No arrest", 0, 1)) %>%
+  filter(victim_race != "Unknown") %>% 
+   mutate(victim_race = ifelse(victim_race == "White", "White", "Nonwhite"),
+          victim_race = factor(victim_race, levels = c("White", "Nonwhite")),
+          victim_age = as.numeric(victim_age))%>% 
+  filter(!(city_state %in% c('Dallas,TX', 'Phoenix,AZ','Kansas City,MO',"Tulsa,AL"))) %>% 
+  na.omit(victim_age)
 ```
+Create a city_state variable and a binary variable indicating the case status (if it is solved or not). factorized victim_race variable and making sure victim_age variables are all numeric.
 
 ###regression fpr the city of Baltimore, MD
 
@@ -45,6 +49,7 @@ fit_logistic =
 Obtain the estimate and confidence interval of the adjusted odds ratio for solving homicides comparing non-white victims to white victims keeping all other variables fixed.
 
 ```{r}
+
 fit_logistic %>% 
   broom::tidy() %>% 
   mutate(OR = exp(estimate),
@@ -59,7 +64,7 @@ Here we can see the estimate of the adjusted odds ratio for solving homicides co
 
 ###dataframe with estimated ORs and CIs for each city.
 ```{r}
-cities_summary<-homicide_tidy %>% 
+cities_summary <-homicide_tidy %>% 
   group_by(city_state) %>% 
   nest() %>% 
   mutate(models = map(data, ~glm(case_status ~ victim_age + victim_sex + victim_race, data = .x, family = binomial())),
@@ -68,10 +73,17 @@ cities_summary<-homicide_tidy %>%
   unnest() %>% 
   filter(term == "victim_raceNonwhite") %>% 
   mutate(OR = exp(estimate),
+         log_OR = estimate,
          conf.low = exp(estimate - std.error*1.96),
          conf.high = exp(estimate + std.error*1.96)) %>% 
-  select(city_state,OR, conf.low, conf.high, p.value) 
+  select(city_state, log_OR, OR, conf.low, conf.high, p.value)
+
+cities_summary %>% 
+  knitr::kable()
+  
 ```
+
+Get estimated ORs and CIs for each of the city in hte data set and create a table.
 
 ###plot that shows the estimated ORs and CIs for each city.
 ```{r}
@@ -198,7 +210,7 @@ cv %>%
   ggplot(aes(x = model, y = rmse)) + geom_violin()
          
 ```
-
+We can tell from the plot that m1 model (our model) has thee smallest rmse while the 'main effets only' model has the highest rmse. 
 
 
 
